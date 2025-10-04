@@ -11,8 +11,8 @@ ____
 ____
 ### 1. Клонируйте репозиторий
 ```bash
-git clone git@github.com:Python-Team-25-26/bignum-arithmetic.git
-cd bignum-arithmetic
+git clone git@github.com:Python-Team-25-26/convex-polygons.git
+cd convex-polygons
 ```
 ### 2. Создайте виртуальное окружение
 ```bash
