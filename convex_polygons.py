@@ -23,41 +23,40 @@ class ConvexPolygon:
 
     def _is_convex(self):
         """
-            Выпуклость определяется по определению:
-
-            Все углы лежат по одну сторону прямой, проходящей через два угла, и так для каждой пары углов.
-
-            Сжатая ссылка на stack overflow - https://shorturl.at/ERZBS
+        Проверяет, является ли многоугольник выпуклым.
+        Все углы должны лежать по одну сторону от прямой, проходящей через два угла.
         """
-
+        
         if len(self._vertices) < 3:
             return False
 
         n = len(self._vertices)
-        sign = 0
+        sign = None 
 
         for i in range(n):
-
             # Берем три последовательные вершины
             x1, y1 = self._vertices[i]
             x2, y2 = self._vertices[(i + 1) % n]
             x3, y3 = self._vertices[(i + 2) % n]
 
-            # Вычисляем векторное произведение векторов (v2-v1) и (v3-v2)
-            # Это показывает, в какую сторону поворачивает многоугольник
+            # Вычисляем векторное произведение
             cross_product = (x2 - x1) * (y3 - y2) - (y2 - y1) * (x3 - x2)
 
             if cross_product == 0:
                 continue
 
-            if sign == 0:
-                sign = 1 if cross_product > 0 else -1
+            # Определяем направление поворота
+            current_positive = cross_product > 0
+
+            if sign is None:
+                # Первое ненулевое значение устанавливает знак
+                sign = current_positive
             else:
-                # Если знак отличается от предыдущих - многоугольник невыпуклый
-                current_sign = 1 if cross_product > 0 else -1
-                if current_sign != sign:
+                # Если направление поворота изменилось - многоугольник невыпуклый
+                if current_positive != sign:
                     return False
 
+        # Если все ненулевые кросс-продукты одного знака (или все нулевые) - многоугольник выпуклый
         return True
 
     @property
