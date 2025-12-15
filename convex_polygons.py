@@ -2,11 +2,48 @@ import math
 from math import sqrt
 
 EPS = 1e-9
+
 def _sub(a, b):
     return (a[0] - b[0], a[1] - b[1])
 
 def _cross(a, b):
     return a[0]*b[1] - a[1]*b[0]
+
+def _on_segment(p, a, b):
+    if (min(a[0], b[0]) - EPS <= p[0] <= max(a[0], b[0]) + EPS and
+        min(a[1], b[1]) - EPS <= p[1] <= max(a[1], b[1]) + EPS):
+        cross = _cross(_sub(b, a), _sub(p, a))
+        return abs(cross) < EPS
+    return False
+
+def _segments_intersect(a1, a2, b1, b2, include_endpoints=True):
+    if (max(a1[0], a2[0]) < min(b1[0], b2[0]) - EPS or
+        min(a1[0], a2[0]) > max(b1[0], b2[0]) + EPS or
+        max(a1[1], a2[1]) < min(b1[1], b2[1]) - EPS or
+        min(a1[1], a2[1]) > max(b1[1], b2[1]) + EPS):
+        return False
+    
+    d1 = _cross(_sub(a2, a1), _sub(b1, a1))
+    d2 = _cross(_sub(a2, a1), _sub(b2, a1))
+    d3 = _cross(_sub(b2, b1), _sub(a1, b1))
+    d4 = _cross(_sub(b2, b1), _sub(a2, b1))
+    
+    if include_endpoints:
+        if (d1 > EPS and d2 > EPS) or (d1 < -EPS and d2 < -EPS):
+            return False
+        if (d3 > EPS and d4 > EPS) or (d3 < -EPS and d4 < -EPS):
+            return False
+        return True
+    else:
+        if d1 > -EPS and d2 > -EPS:
+            return False
+        if d1 < EPS and d2 < EPS:
+            return False
+        if d3 > -EPS and d4 > -EPS:
+            return False
+        if d3 < EPS and d4 < EPS:
+            return False
+        return True
 
 class ConvexPolygon:
     """
@@ -24,39 +61,54 @@ class ConvexPolygon:
     def _is_convex(self):
         """
         Проверяет, является ли многоугольник выпуклым.
-        Все углы должны лежать по одну сторону от прямой, проходящей через два угла.
+        Необходимо проверить:
+        1. Все углы имеют одинаковое направление (CCW или CW)
+        2. Никакие несмежные стороны не пересекаются
         """
-        
+    
         if len(self._vertices) < 3:
             return False
 
         n = len(self._vertices)
-        sign = None 
+        sign = None
 
         for i in range(n):
-            # Берем три последовательные вершины
             x1, y1 = self._vertices[i]
             x2, y2 = self._vertices[(i + 1) % n]
             x3, y3 = self._vertices[(i + 2) % n]
 
-            # Вычисляем векторное произведение
             cross_product = (x2 - x1) * (y3 - y2) - (y2 - y1) * (x3 - x2)
 
-            if cross_product == 0:
+            if abs(cross_product) < EPS:
                 continue
 
-            # Определяем направление поворота
             current_positive = cross_product > 0
 
             if sign is None:
-                # Первое ненулевое значение устанавливает знак
                 sign = current_positive
             else:
-                # Если направление поворота изменилось - многоугольник невыпуклый
                 if current_positive != sign:
-                    return False
+                    return False 
+        
+ 
+        if sign is None:
+            return False
+        
+        for i in range(n):
+            a1 = self._vertices[i]
+            a2 = self._vertices[(i + 1) % n]
+            
+            for j in range(i + 2, n):
+                if j == (i + 1) % n or (j + 1) % n == i:
+                    continue
+                    
 
-        # Если все ненулевые кросс-продукты одного знака (или все нулевые) - многоугольник выпуклый
+                b1 = self._vertices[j]
+                b2 = self._vertices[(j + 1) % n]
+                
+                if _segments_intersect(a1, a2, b1, b2, include_endpoints=False):
+                    return False
+        
         return True
 
     @property
@@ -184,7 +236,6 @@ class ConvexPolygon:
         area = abs(signed) / 2.0
         return True, output, area
 
-
     def triangulate(self):
         """
         Разбивает выпуклый многоугольник на треугольники.
@@ -199,12 +250,20 @@ class ConvexPolygon:
             triangles.append(triangle)
         return triangles
 
-
     def __str__(self):
         return f"ConvexPolygon({self._vertices})"
 
-
 if __name__ == "__main__":
+    try:
+        asymmetric_star = ConvexPolygon([(0, 0), (2, 3),(4, 0), (2, 0), (4, 2)])
+    except ValueError as e:
+        print(f"{e}")
+    
+    try:
+        star1 = ConvexPolygon([(1, 0), (2, 2),(0, 3), (3, 5), (6, 3),(4,2),(5,0),(3,1)])
+    except ValueError as e:
+        print(f"{e}")
+
     square = ConvexPolygon([(0, 0), (1, 0), (1, 1), (0, 1)])
     triangle = ConvexPolygon([(0, 0), (2, 0), (1, 2)])
     print(f"Квадрат: {square}")
@@ -253,9 +312,9 @@ if __name__ == "__main__":
         print(tri)
 
     has_intersection3, intersection_poly3, intersection_area3 = polygon.intersection(triangle)
-    print(f"\n3 Пересечение существует: {has_intersection2}")
-    if has_intersection2:
-        print(f"3 Вершины полигона пересечения: {intersection_poly2}")
-        print(f"3 Площадь пересечения: {intersection_area2:.2f}")
+    print(f"\n3 Пересечение существует: {has_intersection3}")
+    if has_intersection3:
+        print(f"3 Вершины полигона пересечения: {intersection_poly3}")
+        print(f"3 Площадь пересечения: {intersection_area3:.2f}")
     else:
         print("3 Многоугольники не пересекаются")
